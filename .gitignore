@@ -1,0 +1,41 @@
+# --- バイナリ・ビルド成果物 ---
+# `go build` で生成される実行ファイル
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# --- テスト成果物 ---
+# `go test -c` やカバレッジ出力
+*.test
+*.out
+coverage.txt
+
+# --- 環境変数・機密ファイル ---
+.env
+.env.local
+*.pem
+*.key
+
+# --- OS固有ファイル ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# --- エディタ / IDE ---
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# --- その他 ---
+# 基本は不要（go mod download で取得するため）
+# vendor/
+questions.md
