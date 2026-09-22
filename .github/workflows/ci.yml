@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. リポジトリのソースコードをチェックアウト
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Go ランタイムのセットアップ
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true # go.sum に基づく依存キャッシュを有効化
+
+      # 3. 依存モジュールのダウンロード
+      - name: Download dependencies
+        run: go mod download
+
+      # 4. コンパイル確認 (Build)
+      - name: Build
+        run: go build -v ./...
+
+      # 5. テスト実行 (Testcontainers が Ubuntu 内の Docker を使って Postgres を自動起動)
+      - name: Run Tests with Testcontainers
+        run: go test -v ./...

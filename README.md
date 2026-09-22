@@ -81,7 +81,7 @@ go test -v ./internal/repository/...
 
 ```
 
-## Github
+## GitHub　repository
 
 ```shell
 # 1. Git初期化
@@ -96,3 +96,9 @@ git add .
 # 4. 初回コミット
 git commit -m "feat: initial commit with API and testcontainers"
 ```
+## GitHub Actions
+
+```shell
+mkdir -p .github/workflows
+```
+
