@@ -30,6 +30,9 @@ docker compose up -d
 
 ## Go Setups
 
+> [!IMPORTANT] ソースコードを修正したらこのコマンド
+> `go mod tidy`
+
 ```shell
 # モジュール初期化
 go mod init go-postgres-api
@@ -69,12 +72,17 @@ go get github.com/testcontainers/testcontainers-go/modules/postgres
 go mod tidy
 ```
 
+> [!IMPORTANT] Rancher Desktopを起動したらこの設定を入れる
+
 ```shell
-# Check configuration
+# 設定確認
 docker context inspect --format '{{.Endpoints.docker.Host}}'
 # unix:///Users/{ユーザー名}/.rd/docker.sock の場合は以下
 export DOCKER_HOST=$(docker context inspect --format '{{.Endpoints.docker.Host}}')
 export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
+
+# 設定を反映
+source ~/.zshrc
 
 # テスト実行
 go test -v ./internal/repository/...

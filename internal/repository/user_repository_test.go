@@ -26,16 +26,19 @@ func setupTestDB(t *testing.T) (*sql.DB, func()) {
 	}
 
 	// 2. Testcontainers で PostgreSQL コンテナを起動定義
+	// PostgreSQL公式コンテナは初期化スクリプト実行時にプロセスを再起動するためログ検知(ForLog)だと
+	// ログ出力直後とポート解放の間にラグが生じ、connection refusedになる場合がある
+	// そのため、確実にTCPポート(5432/tcp)が接続を受け付けられる状態まで待機する ForListeningPort を指定
 	pgContainer, err := tcpostgres.Run(ctx,
 		"postgres:16-alpine",
 		tcpostgres.WithInitScripts(initScriptPath),
 		tcpostgres.WithDatabase("testdb"),
 		tcpostgres.WithUsername("postgres"),
 		tcpostgres.WithPassword("postgres"),
+		// 確実にTCPポートが接続可能になるまで待機するための設定
 		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(60*time.Second),
+			wait.ForListeningPort("5432/tcp").
+			WithStartupTimeout(60 * time.Second),
 		),
 	)
 	if err != nil {
