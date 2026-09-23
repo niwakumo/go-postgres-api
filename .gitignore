@@ -13,6 +13,7 @@ dist/
 *.test
 *.out
 coverage.txt
+coverage.html
 
 # --- 環境変数・機密ファイル ---
 .env

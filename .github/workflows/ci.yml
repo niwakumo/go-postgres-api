@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Run Tests
+    name: Run Tests & Coverage
     runs-on: ubuntu-latest
 
     steps:
@@ -32,5 +32,18 @@ jobs:
         run: go build -v ./...
 
       # 5. テスト実行 (Testcontainers が Ubuntu 内の Docker を使って Postgres を自動起動)
-      - name: Run Tests with Testcontainers
-        run: go test -v ./...
+      # カバレッジファイルを生成しながらテストを実行
+      - name: Run Tests with Coverage
+        run: go test -v -coverprofile=coverage.out ./...
+
+      # カバレッジHTMLレポートを生成
+      - name: Generate Coverage HTML
+        run: go tool cover -html=coverage.out -o coverage.html
+
+      # 生成したHTMLレポートをCIのアーティファクトとして保存
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.html
+          retention-days: 7
