@@ -66,5 +66,20 @@ go get modernc.org/sqlite
 go mod tidy
 ```
 
+## S3をLocalStackでテスト
+
+```shell
+# AWS SDK for Go v2 関連
+go get github.com/aws/aws-sdk-go-v2
+go get github.com/aws/aws-sdk-go-v2/config
+go get github.com/aws/aws-sdk-go-v2/credentials
+go get github.com/aws/aws-sdk-go-v2/service/s3
+
+# Testcontainers LocalStack モジュール
+go get github.com/testcontainers/testcontainers-go/modules/localstack
+
+go mod tidy
+```
+
 
 
