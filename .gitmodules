@@ -1,0 +1,3 @@
+[submodule "internal/db/schema"]
+	path = internal/db/schema
+	url = https://github.com/niwakumo/go-postgres-schema.git

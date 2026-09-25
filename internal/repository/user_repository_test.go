@@ -3,10 +3,10 @@ package repository_test
 import (
 	"context"
 	"database/sql"
-	"path/filepath"
 	"testing"
 	"time"
 
+	appdb "go-postgres-api/internal/db"
 	"go-postgres-api/internal/repository"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -19,52 +19,49 @@ func setupTestDB(t *testing.T) (*sql.DB, func()) {
 	t.Helper()
 	ctx := context.Background()
 
-	// 1. スキーマ定義SQLのパスを取得 (プロジェクトルートの docker/init/01_schema.sql を参照)
-	initScriptPath, err := filepath.Abs("../../docker/init/01_schema.sql")
-	if err != nil {
-		t.Fatalf("failed to get init script path: %v", err)
-	}
-
-	// 2. Testcontainers で PostgreSQL コンテナを起動定義
+	// 1. PostgreSQL コンテナの起動 (WithInitScripts は使わず、空のDBを起動)
 	// PostgreSQL公式コンテナは初期化スクリプト実行時にプロセスを再起動するためログ検知(ForLog)だと
 	// ログ出力直後とポート解放の間にラグが生じ、connection refusedになる場合がある
 	// そのため、確実にTCPポート(5432/tcp)が接続を受け付けられる状態まで待機する ForListeningPort を指定
 	pgContainer, err := tcpostgres.Run(ctx,
 		"postgres:16-alpine",
-		tcpostgres.WithInitScripts(initScriptPath),
 		tcpostgres.WithDatabase("testdb"),
 		tcpostgres.WithUsername("postgres"),
 		tcpostgres.WithPassword("postgres"),
-		// 確実にTCPポートが接続可能になるまで待機するための設定
 		testcontainers.WithWaitStrategy(
 			wait.ForListeningPort("5432/tcp").
-			WithStartupTimeout(60 * time.Second),
+				WithStartupTimeout(60*time.Second),
 		),
 	)
 	if err != nil {
 		t.Fatalf("failed to start postgres container: %v", err)
 	}
 
-	// 3. 起動したコンテナの動的接続文字列 (DSN) を取得
+	// 2. 接続文字列 (DSN) の取得
 	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
 	if err != nil {
 		t.Fatalf("failed to get connection string: %v", err)
 	}
 
-	db, err := sql.Open("pgx", connStr)
+	sqlDB, err := sql.Open("pgx", connStr)
 	if err != nil {
 		t.Fatalf("failed to connect to test db: %v", err)
 	}
 
-	// 4. テスト終了時のクリーンアップ処理（後片付け）
+	// 3. golang-migrate によるスキーマの自動適用 (SubmoduleのSQLを実行)
+	if err := appdb.RunMigrations(sqlDB); err != nil {
+		t.Fatalf("failed to run migrations: %v", err)
+	}
+
+	// 4. クリーンアップ処理
 	cleanup := func() {
-		db.Close()
+		sqlDB.Close()
 		if err := pgContainer.Terminate(ctx); err != nil {
 			t.Logf("failed to terminate container: %v", err)
 		}
 	}
 
-	return db, cleanup
+	return sqlDB, cleanup
 }
 
 func TestUserRepository_CRUD(t *testing.T) {
