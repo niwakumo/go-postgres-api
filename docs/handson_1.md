@@ -59,7 +59,12 @@ go get -u github.com/golang-migrate/migrate/v4/source/iofs
 go mod tidy
 ```
 
+## インメモリDB(SQLite)
 
+```shell
+go get modernc.org/sqlite
+go mod tidy
+```
 
 
 

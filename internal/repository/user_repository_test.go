@@ -13,6 +13,8 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func setupTestDB(t *testing.T) (*sql.DB, func()) {
@@ -97,5 +99,27 @@ func TestUserRepository_CRUD(t *testing.T) {
 		if found.Name != "Dave" || found.Email != "dave@example.com" {
 			t.Errorf("data mismatch: got %+v", found)
 		}
+	})
+}
+
+func TestUserRepository_SearchByEmailsAndPattern(t *testing.T) {
+	ctx := context.Background()
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	repo := repository.NewUserRepository(db)
+
+	t.Run("ILIKE と ANY を使った検索が実PostgreSQLで正常に機能すること", func(t *testing.T) {
+		// 初期データ: Alice (alice@example.com), Bob (bob@example.com)
+		// 検索条件: 
+		// email が alice@example.com または bob@example.com のいずれか (= ANY)
+		// name に大文字小文字を無視して 'ali' が含まれる (ILIKE '%ali%')
+		targets := []string{"alice@example.com", "bob@example.com"}
+		users, err := repo.SearchByEmailsAndPattern(ctx, targets, "%aLi%")
+
+		assert.NoError(t, err)
+		assert.Len(t, users, 1)
+		assert.Equal(t, "Alice", users[0].Name)
+		assert.Equal(t, "alice@example.com", users[0].Email)
 	})
 }

@@ -45,3 +45,31 @@ func (r *UserRepository) Create(ctx context.Context, name, email string) (*User,
 	}
 	return &u, nil
 }
+
+// SearchByEmailsAndPattern は複数のドメイン候補(= ANY($1))と名前に大文字小文字無視の部分一致(ILIKE)を適用する関数
+func (r *UserRepository) SearchByEmailsAndPattern(ctx context.Context, emailList []string, namePattern string) ([]User, error) {
+	// PostgreSQL 特有のイディオム:
+	// 1. = ANY($1): 配列型スライスをそのまま渡せる構文
+	// 2. ILIKE $2: 大文字・小文字を無視したパターンマッチング
+	query := `
+		SELECT id, name, email, created_at 
+		FROM users 
+		WHERE email = ANY($1) AND name ILIKE $2
+		ORDER BY id ASC`
+
+	rows, err := r.db.QueryContext(ctx, query, emailList, namePattern)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(&u.ID, &u.Name, &u.Email, &u.CreatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, rows.Err()
+}
