@@ -21,18 +21,17 @@ func setupTestDB(t *testing.T) (*sql.DB, func()) {
 	t.Helper()
 	ctx := context.Background()
 
-	// 1. PostgreSQL コンテナの起動 (WithInitScripts は使わず、空のDBを起動)
-	// PostgreSQL公式コンテナは初期化スクリプト実行時にプロセスを再起動するためログ検知(ForLog)だと
-	// ログ出力直後とポート解放の間にラグが生じ、connection refusedになる場合がある
-	// そのため、確実にTCPポート(5432/tcp)が接続を受け付けられる状態まで待機する ForListeningPort を指定
+	// 1. PostgreSQL コンテナの起動
+	// Postgres モジュール推奨の wait.ForLog で起動完了ログを待機
 	pgContainer, err := tcpostgres.Run(ctx,
 		"postgres:16-alpine",
 		tcpostgres.WithDatabase("testdb"),
 		tcpostgres.WithUsername("postgres"),
 		tcpostgres.WithPassword("postgres"),
 		testcontainers.WithWaitStrategy(
-			wait.ForListeningPort("5432/tcp").
-				WithStartupTimeout(60*time.Second),
+			wait.ForLog("database system is ready to accept connections").
+				WithOccurrence(2).
+				WithStartupTimeout(60 * time.Second),
 		),
 	)
 	if err != nil {
@@ -47,15 +46,30 @@ func setupTestDB(t *testing.T) (*sql.DB, func()) {
 
 	sqlDB, err := sql.Open("pgx", connStr)
 	if err != nil {
-		t.Fatalf("failed to connect to test db: %v", err)
+		t.Fatalf("failed to open test db: %v", err)
 	}
 
-	// 3. golang-migrate によるスキーマの自動適用 (SubmoduleのSQLを実行)
+	// 3. CI環境向け: マイグレーション実行前に実際にクエリが通るか Ping リトライ
+	var pingErr error
+	for i := 0; i < 15; i++ {
+		pingCtx, pingCancel := context.WithTimeout(ctx, 2*time.Second)
+		pingErr = sqlDB.PingContext(pingCtx)
+		pingCancel()
+		if pingErr == nil {
+			break
+		}
+		t.Logf("waiting for db to be pingable (attempt %d/15): %v", i+1, pingErr)
+		time.Sleep(1 * time.Second)
+	}
+	if pingErr != nil {
+		t.Fatalf("failed to ping postgres before migration: %v", pingErr)
+	}
+
+	// 4. golang-migrate によるスキーマ適用
 	if err := appdb.RunMigrations(sqlDB); err != nil {
 		t.Fatalf("failed to run migrations: %v", err)
 	}
 
-	// 4. クリーンアップ処理
 	cleanup := func() {
 		sqlDB.Close()
 		if err := pgContainer.Terminate(ctx); err != nil {
