@@ -15,6 +15,8 @@ jobs:
       # 1. リポジトリのソースコードをチェックアウト
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       # 2. Go ランタイムのセットアップ
       - name: Set up Go
